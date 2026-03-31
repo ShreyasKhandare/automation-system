@@ -1,0 +1,292 @@
+{
+  "name": "Google Sheets → Resume Trigger",
+  "nodes": [
+    {
+      "id": "sheets-trigger-1",
+      "name": "Google Sheets Trigger",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID_JOBS }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "event": "rowAdded",
+        "options": {
+          "includeInOutput": "all"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-creds",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "id": "extract-row-1",
+      "name": "Extract Row Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "job_id",
+              "name": "job_id",
+              "value": "={{ $json['Job ID'] ?? $json.job_id ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "score",
+              "name": "score",
+              "value": "={{ Number($json['Score'] ?? $json.score ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "title",
+              "name": "title",
+              "value": "={{ $json['Title'] ?? $json.title ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "value": "={{ $json['Company'] ?? $json.company ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "value": "={{ $json['Status'] ?? $json.status ?? '' }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "check-score-1",
+      "name": "Score ≥ 8?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "score-threshold",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 8,
+              "operator": {"type": "number", "operation": "gte"}
+            },
+            {
+              "id": "has-job-id",
+              "leftValue": "={{ $json.job_id }}",
+              "rightValue": "",
+              "operator": {"type": "string", "operation": "notEquals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "check-no-resume-1",
+      "name": "Resume Not Yet Tailored?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 220],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "resume-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "resume_tailored",
+              "operator": {"type": "string", "operation": "notEquals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "notify-triggering-1",
+      "name": "Notify — Triggering Resume Agent",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1120, 160],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=📄 *Auto-triggering resume tailoring*\n\n*Job:* {{ $('Extract Row Fields').item.json.title }} @ {{ $('Extract Row Fields').item.json.company }}\n*Score:* {{ $('Extract Row Fields').item.json.score }}/10\n*Job ID:* `{{ $('Extract Row Fields').item.json.job_id }}`\n\nTailoring in progress…",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "post-resume-agent-1",
+      "name": "POST to Resume Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORCHESTRATOR_URL }}/agents/resume",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Automation-Token", "value": "={{ $env.ORCHESTRATOR_SECRET }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ job_id: $('Extract Row Fields').item.json.job_id, trigger: 'google_sheets_auto', score: $('Extract Row Fields').item.json.score }) }}",
+        "options": {
+          "timeout": 120000,
+          "response": {"response": {"responseFormat": "json"}}
+        }
+      }
+    },
+    {
+      "id": "check-resume-success-1",
+      "name": "Resume Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "success-check",
+              "leftValue": "={{ $json.status ?? $json.body?.status ?? '' }}",
+              "rightValue": "ok",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "notify-success-1",
+      "name": "Notify Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1560, 220],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=✅ *Resume tailored*\n\n*Job:* {{ $('Extract Row Fields').item.json.title }} @ {{ $('Extract Row Fields').item.json.company }}\n*ATS Score:* {{ $json.ats_score ?? $json.body?.ats_score ?? 'N/A' }}\n\nCheck `assets/resumes/` for the output.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "notify-failure-1",
+      "name": "Notify Failure",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1560, 400],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=⚠️ *Resume tailoring failed*\n\n*Job ID:* {{ $('Extract Row Fields').item.json.job_id }}\n*Error:* {{ $json.error ?? $json.body?.error ?? 'Unknown' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "skip-low-score-1",
+      "name": "Skip — Score Below 8",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 420],
+      "parameters": {}
+    },
+    {
+      "id": "skip-already-done-1",
+      "name": "Skip — Already Tailored",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1120, 460],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [{"node": "Extract Row Fields", "type": "main", "index": 0}]
+      ]
+    },
+    "Extract Row Fields": {
+      "main": [
+        [{"node": "Score ≥ 8?", "type": "main", "index": 0}]
+      ]
+    },
+    "Score ≥ 8?": {
+      "main": [
+        [{"node": "Resume Not Yet Tailored?", "type": "main", "index": 0}],
+        [{"node": "Skip — Score Below 8", "type": "main", "index": 0}]
+      ]
+    },
+    "Resume Not Yet Tailored?": {
+      "main": [
+        [
+          {"node": "Notify — Triggering Resume Agent", "type": "main", "index": 0},
+          {"node": "POST to Resume Agent", "type": "main", "index": 0}
+        ],
+        [{"node": "Skip — Already Tailored", "type": "main", "index": 0}]
+      ]
+    },
+    "POST to Resume Agent": {
+      "main": [
+        [{"node": "Resume Success?", "type": "main", "index": 0}]
+      ]
+    },
+    "Resume Success?": {
+      "main": [
+        [{"node": "Notify Success", "type": "main", "index": 0}],
+        [{"node": "Notify Failure", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": ""
+  },
+  "id": "w-resume-trigger-004",
+  "meta": {
+    "instanceId": "automation-system",
+    "notes": "Watches the Job Tracker Google Sheet for new rows. When a row with Score >= 8 is added and status != 'resume_tailored', triggers the resume agent via HTTP POST. Sends Telegram notifications on start, success, and failure. Timeout is 120s (resume tailoring is slow). Requires GOOGLE_SHEET_ID_JOBS, ORCHESTRATOR_URL, ORCHESTRATOR_SECRET, TELEGRAM_CHAT_ID env vars."
+  }
+}
