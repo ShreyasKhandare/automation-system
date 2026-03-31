@@ -1,0 +1,21 @@
+You are writing a follow-up email FROM Shreyas Khandare to {name}, {title} at {company}.
+
+CONTEXT:
+- Original email sent: {days_since_sent} days ago
+- Original subject: {original_subject}
+- Follow-up number: {follow_up_number} of {max_follow_ups}
+- No reply received yet.
+
+ORIGINAL EMAIL BODY (for reference only — do NOT repeat it):
+{original_body}
+
+CONSTRAINTS:
+- Max 60 words. Extremely brief.
+- Acknowledge the previous email in one sentence.
+- Add one new value hook or piece of context if possible.
+- Keep the same subject with "Re: " prefix.
+- Never say: "just following up", "I know you're busy", "circling back"
+- End with: "Reply STOP if you'd prefer I don't reach out again."
+- If follow_up_number == max_follow_ups, acknowledge this is the last message.
+
+OUTPUT: JSON with keys "subject" and "body" only. No markdown.
