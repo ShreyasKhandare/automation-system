@@ -1,0 +1,78 @@
+name: Market Research
+
+on:
+  schedule:
+    # Sunday 9am EST = 14:00 UTC
+    - cron: "0 14 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (no Notion, no Telegram)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  market-research:
+    name: Weekly market intelligence
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            requests \
+            anthropic \
+            feedparser \
+            beautifulsoup4 \
+            pyyaml \
+            python-dotenv \
+            jsonschema
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Market Research Agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID_MARKET: ${{ secrets.NOTION_DATABASE_ID_MARKET }}
+        run: |
+          FLAGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            FLAGS="--dry-run --verbose"
+          fi
+          python agents/market_research/market_agent.py $FLAGS
+
+      - name: Commit markdown report
+        run: |
+          if [ -n "$(git status --porcelain docs/)" ]; then
+            git add docs/reports/market_*.md
+            git commit -m "chore(docs): add weekly market research report [$(date -u +%Y-W%W)]"
+            git push
+          else
+            echo "No new market report to commit."
+          fi
