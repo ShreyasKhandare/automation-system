@@ -1,0 +1,91 @@
+name: Job Discovery
+
+on:
+  schedule:
+    # 7am EST Mon–Fri = 12pm UTC (UTC-5 in winter, UTC-4 in summer — using 12pm UTC as safe midpoint)
+    - cron: "0 12 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (no sends, no DB writes)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+      stealth:
+        description: "Stealth mode (lower rate limits)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  job-discovery:
+    name: Run job sweep and send Telegram digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            anthropic \
+            feedparser \
+            requests \
+            pyyaml \
+            python-dotenv \
+            jsonschema \
+            beautifulsoup4 \
+            google-api-python-client \
+            google-auth \
+            google-auth-httplib2
+
+      - name: Run Job Discovery agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          GOOGLE_SHEET_ID_JOBS: ${{ secrets.GOOGLE_SHEET_ID_JOBS }}
+          GOOGLE_SHEET_ID_OUTREACH: ${{ secrets.GOOGLE_SHEET_ID_OUTREACH }}
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          HUNTER_API_KEY: ${{ secrets.HUNTER_API_KEY }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID_MARKET: ${{ secrets.NOTION_DATABASE_ID_MARKET }}
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+        run: |
+          FLAGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            FLAGS="$FLAGS --dry-run --verbose"
+          fi
+          if [ "${{ github.event.inputs.stealth }}" = "true" ]; then
+            FLAGS="$FLAGS --stealth"
+          fi
+          python agents/job_discovery/notifier.py $FLAGS
+
+      - name: Write Google Sheets credentials file
+        if: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON != '' }}
+        run: |
+          # If GOOGLE_SHEETS_CREDENTIALS_JSON contains JSON content (not a path),
+          # write it to a temp file and update the env var
+          if echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+            echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" > /tmp/sheets-creds.json
+            echo "GOOGLE_SHEETS_CREDENTIALS_JSON=/tmp/sheets-creds.json" >> $GITHUB_ENV
+          fi
+        env:
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
