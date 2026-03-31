@@ -1,0 +1,281 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AutomationSystemConfig",
+  "description": "Schema for Shreyas Khandare Automation System config.yaml",
+  "type": "object",
+  "required": ["profile", "job_search_preferences", "platforms", "recruiter_outreach", "email_routing_rules", "project_automation", "resume_automation", "research_and_discovery", "documentation_and_github", "constraints", "mobile_commands"],
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "type": "object",
+      "required": ["name", "email", "linkedin", "github", "location", "bio", "skills", "seniority", "target_titles", "target_industries", "resume_base_path", "branding_statement"],
+      "properties": {
+        "name": {"type": "string"},
+        "email": {"type": "string", "format": "email"},
+        "linkedin": {"type": "string", "format": "uri"},
+        "github": {"type": "string", "format": "uri"},
+        "portfolio": {"type": "string"},
+        "location": {"type": "string"},
+        "bio": {"type": "string"},
+        "skills": {
+          "type": "object",
+          "required": ["primary", "secondary", "learning"],
+          "properties": {
+            "primary": {"type": "array", "items": {"type": "string"}},
+            "secondary": {"type": "array", "items": {"type": "string"}},
+            "learning": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "seniority": {"type": "string"},
+        "target_titles": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "target_industries": {"type": "array", "items": {"type": "string"}},
+        "resume_base_path": {"type": "string"},
+        "branding_statement": {"type": "string"}
+      }
+    },
+    "job_search_preferences": {
+      "type": "object",
+      "required": ["locations", "salary", "employment_type", "seniority_levels", "company_blacklist", "company_whitelist", "preferred_tech_stack", "company_size", "visa_constraints", "relocation", "remote_preference", "score_threshold"],
+      "properties": {
+        "locations": {"type": "array", "items": {"type": "string"}},
+        "salary": {
+          "type": "object",
+          "required": ["min", "max", "currency"],
+          "properties": {
+            "min": {"type": "integer", "minimum": 0},
+            "max": {"type": "integer", "minimum": 0},
+            "currency": {"type": "string"}
+          }
+        },
+        "employment_type": {"type": "array", "items": {"type": "string", "enum": ["full-time", "part-time", "contract", "internship"]}},
+        "seniority_levels": {"type": "array", "items": {"type": "string", "enum": ["junior", "mid", "senior", "lead", "staff", "principal"]}},
+        "company_blacklist": {"type": "array", "items": {"type": "string"}},
+        "company_whitelist": {"type": "array", "items": {"type": "string"}},
+        "preferred_tech_stack": {"type": "array", "items": {"type": "string"}},
+        "company_size": {"type": "array", "items": {"type": "string"}},
+        "visa_constraints": {"type": "string"},
+        "relocation": {"type": "boolean"},
+        "remote_preference": {"type": "string", "enum": ["remote-only", "remote-first", "hybrid", "onsite"]},
+        "score_threshold": {"type": "integer", "minimum": 0, "maximum": 10}
+      }
+    },
+    "platforms": {
+      "type": "object",
+      "properties": {
+        "wellfound": {"$ref": "#/definitions/platform"},
+        "greenhouse": {"$ref": "#/definitions/platform"},
+        "otta": {"$ref": "#/definitions/platform"},
+        "serpapi_google_jobs": {"$ref": "#/definitions/platform"},
+        "linkedin_apify": {"$ref": "#/definitions/platform"},
+        "indeed": {"$ref": "#/definitions/platform"}
+      }
+    },
+    "recruiter_outreach": {
+      "type": "object",
+      "required": ["target_titles", "target_seniority", "max_contacts_per_day", "max_contacts_per_company", "personalization_level", "mode", "follow_up_cadence_days", "max_follow_ups", "send_window", "warm_up"],
+      "properties": {
+        "target_titles": {"type": "array", "items": {"type": "string"}},
+        "target_seniority": {"type": "array", "items": {"type": "string"}},
+        "max_contacts_per_day": {"type": "integer", "minimum": 1},
+        "max_contacts_per_company": {"type": "integer", "minimum": 1},
+        "personalization_level": {"type": "string", "enum": ["low", "medium", "high"]},
+        "mode": {"type": "string", "enum": ["assisted", "semi-auto", "auto"]},
+        "follow_up_cadence_days": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+        "max_follow_ups": {"type": "integer", "minimum": 0},
+        "send_window": {
+          "type": "object",
+          "required": ["start_hour", "end_hour", "timezone"],
+          "properties": {
+            "start_hour": {"type": "integer", "minimum": 0, "maximum": 23},
+            "end_hour": {"type": "integer", "minimum": 0, "maximum": 23},
+            "timezone": {"type": "string"}
+          }
+        },
+        "warm_up": {
+          "type": "object",
+          "required": ["week_1_max", "week_2_max", "week_3_plus_max"],
+          "properties": {
+            "week_1_max": {"type": "integer", "minimum": 0},
+            "week_2_max": {"type": "integer", "minimum": 0},
+            "week_3_plus_max": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "email_routing_rules": {
+      "type": "object",
+      "required": ["job_important_keywords", "job_important_domains", "networking_keywords", "spam_keywords", "send_daily_digest", "digest_time", "digest_timezone", "flag_keywords", "classification_confidence_threshold"],
+      "properties": {
+        "job_important_keywords": {"type": "array", "items": {"type": "string"}},
+        "job_important_domains": {"type": "array", "items": {"type": "string"}},
+        "networking_keywords": {"type": "array", "items": {"type": "string"}},
+        "spam_keywords": {"type": "array", "items": {"type": "string"}},
+        "send_daily_digest": {"type": "boolean"},
+        "digest_time": {"type": "string"},
+        "digest_timezone": {"type": "string"},
+        "flag_keywords": {"type": "array", "items": {"type": "string"}},
+        "classification_confidence_threshold": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "project_automation": {
+      "type": "object",
+      "required": ["repos", "schedule", "max_session_duration_minutes"],
+      "properties": {
+        "repos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "url", "local_path", "allowed_tasks", "tech_stack", "max_lines_changed_per_run", "require_pr", "require_tests"],
+            "properties": {
+              "name": {"type": "string"},
+              "url": {"type": "string", "format": "uri"},
+              "local_path": {"type": "string"},
+              "allowed_tasks": {"type": "array", "items": {"type": "string"}},
+              "tech_stack": {"type": "array", "items": {"type": "string"}},
+              "max_lines_changed_per_run": {"type": "integer", "minimum": 1},
+              "require_pr": {"type": "boolean"},
+              "require_tests": {"type": "boolean"},
+              "ci_integration": {"type": "boolean"}
+            }
+          }
+        },
+        "schedule": {"type": "string"},
+        "max_session_duration_minutes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "resume_automation": {
+      "type": "object",
+      "required": ["target_roles", "target_regions", "seniority", "allowed_templates", "output_formats", "customization_level", "ats_rules", "keywords_to_emphasize", "keywords_to_avoid", "tone", "benchmark_profiles", "output_dir"],
+      "properties": {
+        "target_roles": {"type": "array", "items": {"type": "string"}},
+        "target_regions": {"type": "array", "items": {"type": "string"}},
+        "seniority": {"type": "string"},
+        "allowed_templates": {"type": "array", "items": {"type": "string"}},
+        "output_formats": {"type": "array", "items": {"type": "string", "enum": ["pdf", "docx", "markdown"]}},
+        "customization_level": {"type": "string", "enum": ["light", "medium", "deep"]},
+        "ats_rules": {
+          "type": "object",
+          "properties": {
+            "no_tables": {"type": "boolean"},
+            "no_graphics": {"type": "boolean"},
+            "standard_section_names": {"type": "boolean"},
+            "single_column": {"type": "boolean"},
+            "no_headers_footers": {"type": "boolean"},
+            "font_constraint": {"type": "string"}
+          }
+        },
+        "keywords_to_emphasize": {"type": "array", "items": {"type": "string"}},
+        "keywords_to_avoid": {"type": "array", "items": {"type": "string"}},
+        "tone": {"type": "string"},
+        "benchmark_profiles": {"type": "array", "items": {"type": "string"}},
+        "output_dir": {"type": "string"}
+      }
+    },
+    "research_and_discovery": {
+      "type": "object",
+      "required": ["scan_frequency", "sources", "goals", "summary_style", "summary_max_items", "try_asap_threshold", "watch_threshold"],
+      "properties": {
+        "scan_frequency": {"type": "string", "enum": ["daily", "weekly"]},
+        "sources": {
+          "type": "object",
+          "properties": {
+            "github_trending": {"type": "boolean"},
+            "huggingface_papers": {"type": "boolean"},
+            "arxiv": {"type": "boolean"},
+            "wellfound_jobs": {"type": "boolean"},
+            "product_hunt": {"type": "boolean"},
+            "reddit_ml": {"type": "boolean"},
+            "hacker_news": {"type": "boolean"}
+          }
+        },
+        "goals": {"type": "array", "items": {"type": "string"}},
+        "summary_style": {"type": "string"},
+        "summary_max_items": {"type": "integer", "minimum": 1},
+        "try_asap_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "watch_threshold": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "documentation_and_github": {
+      "type": "object",
+      "required": ["automation_repo", "primary_repos", "docs_convention", "commit_frequency", "commit_style", "committable_artifacts", "never_commit", "auto_update_readme", "profile_readme_repo"],
+      "properties": {
+        "automation_repo": {"type": "string"},
+        "primary_repos": {"type": "array", "items": {"type": "string"}},
+        "docs_convention": {
+          "type": "object",
+          "properties": {
+            "changelog": {"type": "string"},
+            "runbook": {"type": "string"},
+            "weekly_report": {"type": "string"}
+          }
+        },
+        "commit_frequency": {"type": "string"},
+        "commit_style": {"type": "string"},
+        "committable_artifacts": {"type": "array", "items": {"type": "string"}},
+        "never_commit": {"type": "array", "items": {"type": "string"}},
+        "auto_update_readme": {"type": "boolean"},
+        "profile_readme_repo": {"type": "string"}
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["daily_time_budget_minutes", "rate_limits", "anthropic_api_budget_usd_per_month", "ethics", "manual_approval_required"],
+      "properties": {
+        "daily_time_budget_minutes": {"type": "integer", "minimum": 0},
+        "rate_limits": {
+          "type": "object",
+          "properties": {
+            "linkedin_profile_views_per_day": {"type": "integer"},
+            "cold_emails_per_day": {"type": "integer"},
+            "apollo_api_calls_per_day": {"type": "integer"},
+            "hunter_lookups_per_day": {"type": "integer"},
+            "serpapi_calls_per_day": {"type": "integer"},
+            "github_actions_minutes_per_month": {"type": "integer"}
+          }
+        },
+        "anthropic_api_budget_usd_per_month": {"type": "number", "minimum": 0},
+        "ethics": {
+          "type": "object",
+          "properties": {
+            "no_fake_personas": {"type": "boolean"},
+            "always_include_unsubscribe": {"type": "boolean"},
+            "honor_opt_outs_immediately": {"type": "boolean"},
+            "no_purchased_lists": {"type": "boolean"},
+            "no_direct_linkedin_scraping": {"type": "boolean"}
+          }
+        },
+        "manual_approval_required": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "mobile_commands": {
+      "type": "object",
+      "required": ["transport", "telegram_bot_name", "commands"],
+      "properties": {
+        "transport": {"type": "string", "enum": ["telegram", "email", "http_webhook"]},
+        "telegram_bot_name": {"type": "string"},
+        "commands": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["agent", "params", "description"],
+            "properties": {
+              "agent": {"type": "string"},
+              "params": {"type": "array", "items": {"type": "string"}},
+              "description": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "platform": {
+      "type": "object",
+      "required": ["enabled", "method"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "method": {"type": "string", "enum": ["api", "scrape", "rss", "apify_actor"]}
+      }
+    }
+  }
+}

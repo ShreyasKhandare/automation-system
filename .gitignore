@@ -1,0 +1,62 @@
+# ── Secrets — NEVER commit these ────────────────────────────────────────────
+.env
+*.key
+*.pem
+*credentials*.json
+service-account*.json
+token.json
+
+# ── Local database ──────────────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Raw logs (may contain PII or API responses) ─────────────────────────────
+logs/raw/
+logs/*.log
+
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+desktop.ini
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Generated resume output (keep index.json, ignore individual files) ───────
+assets/resumes/*.pdf
+assets/resumes/*.docx
+
+# ── Temporary files ──────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.orig

@@ -1,0 +1,262 @@
+# config.yaml — Shreyas Khandare Automation System
+# Last updated: 2026-03-31
+# NEVER commit secrets here. Use .env for keys.
+
+profile:
+  name: "Shreyas Khandare"
+  email: "shreyas.khandare@outlook.com"
+  linkedin: "https://linkedin.com/in/shreyas-khandare"
+  github: "https://github.com/ShreyasKhandare"
+  portfolio: "https://shreyaskhandare.dev"  # update when live
+  location: "Tallahassee, FL (Open to Remote)"
+  bio: >
+    AI/LLM Engineer with MS in CS from Florida State University.
+    Builds production RAG pipelines, multi-agent LLM systems, and
+    LLM-powered APIs. Currently at FDLE (systems engineering).
+    Flagship: FinOps Sentinel — LangGraph multi-agent compliance RAG.
+  skills:
+    primary: [LangChain, LangGraph, ChromaDB, FastAPI, Streamlit, Python, RAG, Multi-Agent AI]
+    secondary: [C#, ASP.NET, SQL Server, JavaScript, TypeScript, SharePoint, Git]
+    learning: [MCP servers, Fine-tuning, Multimodal LLMs]
+  seniority: "Mid-level (2-5 years AI/LLM experience)"
+  target_titles:
+    - "AI Engineer"
+    - "LLM Engineer"
+    - "ML Engineer"
+    - "GenAI Engineer"
+    - "AI/ML Software Engineer"
+    - "Applied AI Engineer"
+  target_industries: [FinTech, RegTech, AI-native startups, Compliance Tech]
+  resume_base_path: "assets/resume_base.md"
+  branding_statement: >
+    I ship production AI systems. FinOps Sentinel demonstrates RAG +
+    multi-agent orchestration at production scale — not a tutorial project.
+
+job_search_preferences:
+  locations:
+    - "Remote"
+    - "Tallahassee, FL"
+    - "Tampa, FL"
+    - "Orlando, FL"
+    - "Miami, FL"
+  salary:
+    min: 110000
+    max: 180000
+    currency: "USD"
+  employment_type: ["full-time"]
+  seniority_levels: ["mid", "senior"]
+  company_blacklist: []  # add companies you'd never work for
+  company_whitelist: []  # blank = consider all
+  preferred_tech_stack: [Python, LangChain, FastAPI, RAG, LLM]
+  company_size: ["startup", "series-a", "series-b", "mid-size"]  # not FAANG-only
+  visa_constraints: "US Authorized"
+  relocation: false
+  remote_preference: "remote-first"
+  score_threshold: 6  # only alert if Claude scores >= 6/10
+
+platforms:
+  wellfound:
+    enabled: true
+    method: "api"
+  greenhouse:
+    enabled: true
+    method: "scrape"
+  otta:
+    enabled: true
+    method: "rss"
+  serpapi_google_jobs:
+    enabled: true
+    method: "api"
+  linkedin_apify:
+    enabled: false  # toggle when Apify credits available
+    method: "apify_actor"
+  indeed:
+    enabled: true
+    method: "rss"
+
+recruiter_outreach:
+  target_titles: ["Technical Recruiter", "Engineering Recruiter", "Talent Acquisition", "Hiring Manager"]
+  target_seniority: ["individual contributor recruiter", "senior recruiter", "talent lead"]
+  max_contacts_per_day: 15
+  max_contacts_per_company: 2
+  personalization_level: "high"  # low | medium | high
+  mode: "assisted"  # assisted (you approve) | semi-auto (sends after 30min if no veto)
+  follow_up_cadence_days: [5, 10]
+  max_follow_ups: 2
+  send_window:
+    start_hour: 9
+    end_hour: 11
+    timezone: "America/New_York"
+  warm_up:
+    week_1_max: 5
+    week_2_max: 10
+    week_3_plus_max: 15
+
+email_routing_rules:
+  job_important_keywords: ["interview", "offer", "application", "recruiter", "role", "position", "opportunity", "screening", "hiring"]
+  job_important_domains: ["greenhouse.io", "lever.co", "workday.com", "myworkdayjobs.com", "jobvite.com"]
+  networking_keywords: ["reply", "following up", "coffee chat", "connect", "referral"]
+  spam_keywords: ["unsubscribe", "sale", "deal", "% off", "newsletter", "digest"]
+  send_daily_digest: true
+  digest_time: "18:00"
+  digest_timezone: "America/New_York"
+  flag_keywords: ["interview scheduled", "offer extended", "next steps", "start date"]
+  classification_confidence_threshold: 0.85
+
+project_automation:
+  repos:
+    - name: "finops-sentinel"
+      url: "https://github.com/ShreyasKhandare/finops-sentinel"
+      local_path: "D:/SHREYAS/finops-sentinel"
+      allowed_tasks: ["bugfix", "docs", "small_feature", "refactor", "test"]
+      tech_stack: [Python, LangChain, LangGraph, FastAPI, Streamlit]
+      max_lines_changed_per_run: 200
+      require_pr: true
+      require_tests: true
+      ci_integration: false  # set true when CI is set up
+    - name: "portfolio-website"
+      url: "https://github.com/ShreyasKhandare/portfolio-website"
+      local_path: "D:/SHREYAS/Portfolio-Website"
+      allowed_tasks: ["content_update", "bugfix", "small_feature"]
+      tech_stack: [React, TypeScript, Vite]
+      max_lines_changed_per_run: 100
+      require_pr: false  # direct commit ok for portfolio
+      require_tests: false
+  schedule: "manual"  # manual | daily_2am | weekly_sunday
+  max_session_duration_minutes: 60
+
+resume_automation:
+  target_roles: ["AI Engineer", "LLM Engineer", "ML Engineer", "GenAI Engineer"]
+  target_regions: ["United States", "Remote"]
+  seniority: "mid-senior"
+  allowed_templates: ["ats_single_column", "minimal_clean"]
+  output_formats: ["pdf", "docx", "markdown"]
+  customization_level: "deep"  # light | medium | deep
+  ats_rules:
+    no_tables: true
+    no_graphics: true
+    standard_section_names: true  # Experience, Education, Skills, Projects
+    single_column: true
+    no_headers_footers: true
+    font_constraint: "standard"  # Arial, Calibri, Times New Roman only
+  keywords_to_emphasize: [RAG, LangGraph, multi-agent, LangChain, FastAPI, compliance, FinTech]
+  keywords_to_avoid: ["responsible for", "duties included", "worked on"]  # weak verbs
+  tone: "quantified-achievement"
+  benchmark_profiles: []  # paths to anonymized sample resumes for benchmarking
+  output_dir: "assets/resumes/"
+
+research_and_discovery:
+  scan_frequency: "weekly"  # daily | weekly
+  sources:
+    github_trending: true
+    huggingface_papers: true
+    arxiv: true
+    wellfound_jobs: true
+    product_hunt: true
+    reddit_ml: true
+    hacker_news: true
+  goals: ["productivity", "job_search", "learning", "portfolio_growth"]
+  summary_style: "concise-bullets"
+  summary_max_items: 10
+  try_asap_threshold: 0.85  # Claude confidence score
+  watch_threshold: 0.60
+
+documentation_and_github:
+  automation_repo: "automation-system"
+  primary_repos: ["finops-sentinel", "portfolio-website", "automation-system"]
+  docs_convention:
+    changelog: "CHANGELOG.md"
+    runbook: "RUNBOOK.md"
+    weekly_report: "docs/reports/week_YYYY_WW.md"
+  commit_frequency: "daily_aggregated"
+  commit_style: "conventional"  # feat, fix, chore, docs
+  committable_artifacts:
+    - "weekly job search report"
+    - "AI tools radar digest"
+    - "project summaries"
+    - "config snapshots (no secrets)"
+    - "resume version index"
+  never_commit:
+    - "API keys or tokens"
+    - "personal email addresses"
+    - "raw job post content (ToS risk)"
+    - "recruiter contact details"
+    - "email contents"
+  auto_update_readme: true
+  profile_readme_repo: "ShreyasKhandare"  # github.com/ShreyasKhandare/ShreyasKhandare
+
+constraints:
+  daily_time_budget_minutes: 0  # fully async, no manual time needed
+  rate_limits:
+    linkedin_profile_views_per_day: 50
+    cold_emails_per_day: 15
+    apollo_api_calls_per_day: 40
+    hunter_lookups_per_day: 20
+    serpapi_calls_per_day: 30
+    github_actions_minutes_per_month: 2000  # free tier limit
+  anthropic_api_budget_usd_per_month: 10
+  ethics:
+    no_fake_personas: true
+    always_include_unsubscribe: true
+    honor_opt_outs_immediately: true
+    no_purchased_lists: true
+    no_direct_linkedin_scraping: true  # use Apify actor instead
+  manual_approval_required:
+    - "sending any email"
+    - "applying to any job"
+    - "force-pushing to main branch"
+    - "deleting any file"
+    - "publishing any public content"
+
+mobile_commands:
+  transport: "telegram"  # telegram | email | http_webhook
+  telegram_bot_name: "@ShreyasAutomationBot"
+  commands:
+    RUN_JOB_SWEEP:
+      agent: job_discovery
+      params: []
+      description: "Run full job discovery pipeline now"
+    RUN_OUTREACH_SAFE:
+      agent: recruiter_outreach
+      params: []
+      description: "Find recruiters and draft emails for approval"
+    PAUSE_OUTREACH:
+      agent: recruiter_outreach
+      params: [duration_hours]
+      description: "Pause outreach sending for N hours"
+    RESUME_OUTREACH:
+      agent: recruiter_outreach
+      params: []
+      description: "Resume paused outreach"
+    START_PROJECT:
+      agent: project_autopilot
+      params: [repo_name, task_type, description]
+      description: "Start a bounded coding task on a repo"
+    RUN_RESUME_TAILORING:
+      agent: resume_agent
+      params: [job_id]
+      description: "Tailor resume for a specific job from the tracker"
+    GENERATE_DAILY_DIGEST:
+      agent: orchestrator
+      params: []
+      description: "Generate and send today's full digest now"
+    RESCAN_AI_TOOLS:
+      agent: ai_radar
+      params: []
+      description: "Run AI tools radar scan now"
+    RESCAN_MARKET:
+      agent: market_research
+      params: []
+      description: "Run full market and profile research now"
+    UPDATE_GITHUB_DOCS:
+      agent: github_docs
+      params: []
+      description: "Generate and commit latest docs and reports"
+    STATUS:
+      agent: orchestrator
+      params: []
+      description: "Get full system health status"
+    HELP:
+      agent: orchestrator
+      params: []
+      description: "List all available commands"
