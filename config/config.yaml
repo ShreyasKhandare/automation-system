@@ -77,12 +77,15 @@ platforms:
 recruiter_outreach:
   target_titles: ["Technical Recruiter", "Engineering Recruiter", "Talent Acquisition", "Hiring Manager"]
   target_seniority: ["individual contributor recruiter", "senior recruiter", "talent lead"]
-  max_contacts_per_day: 15
+  max_contacts_per_day: 8
   max_contacts_per_company: 2
   personalization_level: "high"  # low | medium | high
   mode: "assisted"  # assisted (you approve) | semi-auto (sends after 30min if no veto)
   follow_up_cadence_days: [5, 10]
   max_follow_ups: 2
+  apollo_credits_budget_per_month: 45
+  apollo_credits_safety_buffer: 5
+  outreach_active_days_per_week: 3
   send_window:
     start_hour: 9
     end_hour: 11
