@@ -1,0 +1,82 @@
+name: AI Radar Briefing
+
+on:
+  schedule:
+    # 1pm UTC = 9am EST / 8am EDT
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (no Telegram send, no DB write)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  ai-briefing:
+    name: Run AI Radar and send Telegram briefing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            anthropic \
+            feedparser \
+            requests \
+            pyyaml \
+            python-dotenv \
+            jsonschema \
+            beautifulsoup4
+
+      - name: Run AI Radar agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Remaining secrets available but not required for this agent
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          HUNTER_API_KEY: ${{ secrets.HUNTER_API_KEY }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GOOGLE_SHEET_ID_JOBS: ${{ secrets.GOOGLE_SHEET_ID_JOBS }}
+          GOOGLE_SHEET_ID_OUTREACH: ${{ secrets.GOOGLE_SHEET_ID_OUTREACH }}
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID_MARKET: ${{ secrets.NOTION_DATABASE_ID_MARKET }}
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+        run: |
+          DRY_RUN_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run --verbose"
+          fi
+          python agents/ai_radar/notifier.py $DRY_RUN_FLAG
+
+      - name: Commit weekly digest (Mondays only)
+        if: github.event_name == 'schedule'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Only commit if new digest files were written
+          if git diff --quiet docs/ai_radar/; then
+            echo "No new weekly digest to commit."
+          else
+            git add docs/ai_radar/
+            git commit -m "chore(radar): commit AI tools digest $(date +%Y-W%W)"
+            git push
+          fi
