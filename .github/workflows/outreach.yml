@@ -1,0 +1,97 @@
+name: Outreach Agent
+
+on:
+  schedule:
+    # 9am EST Mon-Fri = 14:00 UTC (inside send window 9-11am EST)
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      companies:
+        description: "Comma-separated company names (leave blank to skip find phase)"
+        required: false
+        default: ""
+      follow_ups:
+        description: "Process due follow-ups"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+      dry_run:
+        description: "Dry run (no sends, no API calls)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  outreach:
+    name: Outreach pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            requests \
+            anthropic \
+            google-auth \
+            google-api-python-client \
+            google-auth-oauthlib \
+            pyyaml \
+            python-dotenv \
+            jsonschema
+
+      - name: Write Google Sheets credentials
+        if: ${{ env.GOOGLE_SHEETS_CREDENTIALS_JSON != '' }}
+        run: |
+          if echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+            echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" > /tmp/sheets-creds.json
+            echo "GOOGLE_SHEETS_CREDENTIALS_JSON=/tmp/sheets-creds.json" >> $GITHUB_ENV
+          fi
+        env:
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+
+      - name: Run Outreach Agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          HUNTER_API_KEY: ${{ secrets.HUNTER_API_KEY }}
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GOOGLE_SHEET_ID_OUTREACH: ${{ secrets.GOOGLE_SHEET_ID_OUTREACH }}
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ env.GOOGLE_SHEETS_CREDENTIALS_JSON || secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+          N8N_OUTREACH_APPROVAL_URL: ${{ secrets.N8N_OUTREACH_APPROVAL_URL }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.companies }}" ]; then
+            ARGS="$ARGS --companies '${{ github.event.inputs.companies }}'"
+          fi
+          if [ "${{ github.event.inputs.follow_ups }}" = "true" ]; then
+            ARGS="$ARGS --follow-ups"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run --verbose"
+          fi
+          # Default: process follow-ups on scheduled runs
+          if [ -z "${{ github.event.inputs.follow_ups }}" ] && [ -z "${{ github.event.inputs.companies }}" ]; then
+            ARGS="$ARGS --follow-ups"
+          fi
+          eval python agents/outreach/outreach_agent.py $ARGS

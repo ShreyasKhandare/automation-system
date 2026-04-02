@@ -1,0 +1,376 @@
+{
+  "name": "High-Score Job → Apollo + Hunter → Outreach Queue",
+  "nodes": [
+    {
+      "id": "job-webhook-1",
+      "name": "New High-Score Job Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "job-to-outreach-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "job-to-outreach",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate-job-1",
+      "name": "Validate Job Payload",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-company",
+              "leftValue": "={{ $json.body?.company ?? $json.company ?? '' }}",
+              "rightValue": "",
+              "operator": {"type": "string", "operation": "notEquals"}
+            },
+            {
+              "id": "has-job-id",
+              "leftValue": "={{ $json.body?.job_id ?? $json.job_id ?? '' }}",
+              "rightValue": "",
+              "operator": {"type": "string", "operation": "notEquals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "extract-job-1",
+      "name": "Extract Job Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [680, 220],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "job_id",
+              "name": "job_id",
+              "value": "={{ $json.body?.job_id ?? $json.job_id }}",
+              "type": "string"
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "value": "={{ $json.body?.company ?? $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "title",
+              "name": "title",
+              "value": "={{ $json.body?.title ?? $json.title ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "score",
+              "name": "score",
+              "value": "={{ Number($json.body?.score ?? $json.score ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "domain",
+              "name": "domain",
+              "value": "={{ $json.body?.domain ?? $json.domain ?? '' }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "apollo-lookup-1",
+      "name": "Apollo.io — Recruiter Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 220],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/v1/mixed_people/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "Cache-Control", "value": "no-cache"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ api_key: $env.APOLLO_API_KEY, q_organization_name: $json.company, person_titles: ['Recruiter', 'Talent Acquisition', 'Engineering Manager', 'Technical Recruiter', 'HR Manager'], page: 1, per_page: 5 }) }}",
+        "options": {"timeout": 15000}
+      }
+    },
+    {
+      "id": "check-apollo-results-1",
+      "name": "Apollo Found Contacts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 220],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-contacts",
+              "leftValue": "={{ ($json.people ?? []).length }}",
+              "rightValue": 0,
+              "operator": {"type": "number", "operation": "gt"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "split-contacts-1",
+      "name": "Split Contacts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1340, 140],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "extract-contact-1",
+      "name": "Extract Contact",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1560, 140],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "first_name",
+              "name": "first_name",
+              "value": "={{ $json.first_name ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "last_name",
+              "name": "last_name",
+              "value": "={{ $json.last_name ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "apollo_email",
+              "name": "apollo_email",
+              "value": "={{ $json.email ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "linkedin_url",
+              "name": "linkedin_url",
+              "value": "={{ $json.linkedin_url ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "title",
+              "name": "title",
+              "value": "={{ $json.title ?? '' }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "hunter-verify-1",
+      "name": "Hunter.io — Email Verify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1780, 140],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.hunter.io/v2/email-verifier",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "email", "value": "={{ $json.apollo_email }}"},
+            {"name": "api_key", "value": "={{ $env.HUNTER_API_KEY }}"}
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"responseFormat": "json"}}
+        }
+      }
+    },
+    {
+      "id": "check-email-valid-1",
+      "name": "Email Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2000, 140],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "hunter-status",
+              "leftValue": "={{ $json.data?.status ?? '' }}",
+              "rightValue": "invalid",
+              "operator": {"type": "string", "operation": "notEquals"}
+            },
+            {
+              "id": "has-email",
+              "leftValue": "={{ $('Extract Contact').item.json.apollo_email }}",
+              "rightValue": "",
+              "operator": {"type": "string", "operation": "notEquals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "post-to-outreach-queue-1",
+      "name": "Add to Outreach Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2220, 80],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORCHESTRATOR_URL }}/agents/outreach/queue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Automation-Token", "value": "={{ $env.ORCHESTRATOR_SECRET }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ job_id: $('Extract Job Fields').item.json.job_id, company: $('Extract Job Fields').item.json.company, job_title: $('Extract Job Fields').item.json.title, score: $('Extract Job Fields').item.json.score, recipient_name: $('Extract Contact').item.json.first_name + ' ' + $('Extract Contact').item.json.last_name, recipient_email: $('Extract Contact').item.json.apollo_email, recipient_title: $('Extract Contact').item.json.title, linkedin_url: $('Extract Contact').item.json.linkedin_url, hunter_status: $json.data?.status ?? 'unknown', source: 'n8n_auto' }) }}",
+        "options": {"timeout": 20000}
+      }
+    },
+    {
+      "id": "notify-queued-1",
+      "name": "Notify Queued",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [2440, 80],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=📬 *Outreach queued for approval*\n\n*Job:* {{ $('Extract Job Fields').item.json.title }} @ {{ $('Extract Job Fields').item.json.company }} (score: {{ $('Extract Job Fields').item.json.score }})\n*Contact:* {{ $('Extract Contact').item.json.first_name }} {{ $('Extract Contact').item.json.last_name }} — {{ $('Extract Contact').item.json.apollo_email }}\n\nEmail drafted and awaiting your approval.",
+        "additionalFields": {"parse_mode": "Markdown"}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "skip-invalid-email-1",
+      "name": "Skip — Invalid Email",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2220, 220],
+      "parameters": {}
+    },
+    {
+      "id": "notify-no-contacts-1",
+      "name": "Notify — No Contacts Found",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1340, 340],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=ℹ️ No recruiters found on Apollo for *{{ $('Extract Job Fields').item.json.company }}* (job score: {{ $('Extract Job Fields').item.json.score }}). Manual outreach may be needed.",
+        "additionalFields": {"parse_mode": "Markdown"}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "reject-bad-payload-1",
+      "name": "Reject Bad Payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 400],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\": \"Missing company or job_id\"}",
+        "options": {"responseCode": 400}
+      }
+    }
+  ],
+  "connections": {
+    "New High-Score Job Webhook": {
+      "main": [
+        [{"node": "Validate Job Payload", "type": "main", "index": 0}]
+      ]
+    },
+    "Validate Job Payload": {
+      "main": [
+        [{"node": "Extract Job Fields", "type": "main", "index": 0}],
+        [{"node": "Reject Bad Payload", "type": "main", "index": 0}]
+      ]
+    },
+    "Extract Job Fields": {
+      "main": [
+        [{"node": "Apollo.io — Recruiter Lookup", "type": "main", "index": 0}]
+      ]
+    },
+    "Apollo.io — Recruiter Lookup": {
+      "main": [
+        [{"node": "Apollo Found Contacts?", "type": "main", "index": 0}]
+      ]
+    },
+    "Apollo Found Contacts?": {
+      "main": [
+        [{"node": "Split Contacts", "type": "main", "index": 0}],
+        [{"node": "Notify — No Contacts Found", "type": "main", "index": 0}]
+      ]
+    },
+    "Split Contacts": {
+      "main": [
+        [{"node": "Extract Contact", "type": "main", "index": 0}]
+      ]
+    },
+    "Extract Contact": {
+      "main": [
+        [{"node": "Hunter.io — Email Verify", "type": "main", "index": 0}]
+      ]
+    },
+    "Hunter.io — Email Verify": {
+      "main": [
+        [{"node": "Email Valid?", "type": "main", "index": 0}]
+      ]
+    },
+    "Email Valid?": {
+      "main": [
+        [{"node": "Add to Outreach Queue", "type": "main", "index": 0}],
+        [{"node": "Skip — Invalid Email", "type": "main", "index": 0}]
+      ]
+    },
+    "Add to Outreach Queue": {
+      "main": [
+        [{"node": "Notify Queued", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": ""
+  },
+  "id": "w-job-to-outreach-005",
+  "meta": {
+    "instanceId": "automation-system",
+    "notes": "Called by job_discovery agent via HTTP POST when a high-score job is found. Flow: 1) Apollo.io people search for recruiters/hiring managers at the company. 2) Hunter.io email verification for each contact. 3) Valid contacts POSTed to /agents/outreach/queue for AI drafting. 4) Telegram notification with contact details. Requires APOLLO_API_KEY, HUNTER_API_KEY, ORCHESTRATOR_URL, ORCHESTRATOR_SECRET, TELEGRAM_CHAT_ID."
+  }
+}

@@ -132,12 +132,12 @@ See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the full specification including al
 ## Implementation Status
 
 - [x] Session 1 — Foundation (folder structure, config, shared modules)
-- [ ] Session 2 — Telegram Bot + Orchestrator
-- [ ] Session 3 — AI Radar Agent
-- [ ] Session 4 — Job Discovery Agent
-- [ ] Session 5 — Email Triage Agent
-- [ ] Session 6 — Resume Agent
-- [ ] Session 7 — GitHub Docs Agent
-- [ ] Session 8 — n8n Workflows
-- [ ] Session 9 — Outreach Agent
-- [ ] Session 10 — Project Autopilot + Market Research
+- [x] Session 2 — Telegram Bot + Orchestrator
+- [x] Session 3 — AI Radar Agent
+- [x] Session 4 — Job Discovery Agent
+- [x] Session 5 — Email Triage Agent
+- [x] Session 6 — Resume Agent
+- [x] Session 7 — GitHub Docs Agent
+- [x] Session 8 — n8n Workflows
+- [x] Session 9 — Outreach Agent
+- [x] Session 10 — Project Autopilot + Market Research

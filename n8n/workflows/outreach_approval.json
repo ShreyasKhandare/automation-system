@@ -1,0 +1,368 @@
+{
+  "name": "Outreach Approval Gate",
+  "nodes": [
+    {
+      "id": "outreach-webhook-1",
+      "name": "Outreach Draft Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "outreach-approval-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outreach-approval",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      }
+    },
+    {
+      "id": "validate-payload-1",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-outreach-id",
+              "leftValue": "={{ $json.body?.outreach_id ?? $json.outreach_id ?? '' }}",
+              "rightValue": "",
+              "operator": {"type": "string", "operation": "notEquals"}
+            },
+            {
+              "id": "has-recipient",
+              "leftValue": "={{ $json.body?.recipient_email ?? $json.recipient_email ?? '' }}",
+              "rightValue": "",
+              "operator": {"type": "string", "operation": "notEquals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "format-approval-msg-1",
+      "name": "Format Approval Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [680, 220],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outreach_id",
+              "name": "outreach_id",
+              "value": "={{ $json.body?.outreach_id ?? $json.outreach_id }}",
+              "type": "string"
+            },
+            {
+              "id": "recipient_name",
+              "name": "recipient_name",
+              "value": "={{ $json.body?.recipient_name ?? $json.recipient_name ?? 'Recruiter' }}",
+              "type": "string"
+            },
+            {
+              "id": "recipient_email",
+              "name": "recipient_email",
+              "value": "={{ $json.body?.recipient_email ?? $json.recipient_email }}",
+              "type": "string"
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "value": "={{ $json.body?.company ?? $json.company ?? '?' }}",
+              "type": "string"
+            },
+            {
+              "id": "subject",
+              "name": "subject",
+              "value": "={{ $json.body?.subject ?? $json.subject ?? '(no subject)' }}",
+              "type": "string"
+            },
+            {
+              "id": "body_preview",
+              "name": "body_preview",
+              "value": "={{ ($json.body?.email_body ?? $json.email_body ?? '').slice(0, 400) }}",
+              "type": "string"
+            },
+            {
+              "id": "telegram_msg",
+              "name": "telegram_msg",
+              "value": "=📧 *Outreach Approval Required*\n\n*To:* {{ $json.body?.recipient_name ?? $json.recipient_name }} <{{ $json.body?.recipient_email ?? $json.recipient_email }}>\n*Company:* {{ $json.body?.company ?? $json.company ?? '?' }}\n*Subject:* {{ $json.body?.subject ?? $json.subject }}\n\n*Preview:*\n```\n{{ ($json.body?.email_body ?? $json.email_body ?? '').slice(0, 400) }}\n```\n\nApprove or reject this email?",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "send-approval-request-1",
+      "name": "Send Approval Request",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [900, 220],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.telegram_msg }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": "={{ JSON.stringify({ inline_keyboard: [[ { text: '✅ Approve', callback_data: 'approve:' + $json.outreach_id }, { text: '❌ Reject', callback_data: 'reject:' + $json.outreach_id } ]] }) }}"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "callback-webhook-1",
+      "name": "Telegram Callback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 560],
+      "webhookId": "outreach-callback-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outreach-callback",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {}
+      }
+    },
+    {
+      "id": "parse-callback-1",
+      "name": "Parse Callback",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 560],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "callback_data",
+              "name": "callback_data",
+              "value": "={{ $json.body?.callback_query?.data ?? $json.callback_query?.data ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "action",
+              "name": "action",
+              "value": "={{ ($json.body?.callback_query?.data ?? $json.callback_query?.data ?? '').split(':')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "outreach_id",
+              "name": "outreach_id",
+              "value": "={{ ($json.body?.callback_query?.data ?? $json.callback_query?.data ?? '').split(':')[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "from_id",
+              "name": "from_id",
+              "value": "={{ $json.body?.callback_query?.from?.id ?? $json.callback_query?.from?.id ?? '' }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "auth-callback-1",
+      "name": "Auth Callback",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 560],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "auth-check",
+              "leftValue": "={{ $json.from_id }}",
+              "rightValue": "={{ $env.TELEGRAM_CHAT_ID }}",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "route-approve-reject-1",
+      "name": "Approve or Reject?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 480],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "action-check",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "post-send-email-1",
+      "name": "POST — Send Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORCHESTRATOR_URL }}/agents/outreach/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Automation-Token", "value": "={{ $env.ORCHESTRATOR_SECRET }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ outreach_id: $json.outreach_id, action: 'send' }) }}",
+        "options": {"timeout": 30000}
+      }
+    },
+    {
+      "id": "confirm-sent-1",
+      "name": "Confirm Sent",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1340, 400],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "✅ Email {{ $('Parse Callback').item.json.outreach_id }} *approved and sent*.",
+        "additionalFields": {"parse_mode": "Markdown"}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "post-reject-email-1",
+      "name": "POST — Reject Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 600],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORCHESTRATOR_URL }}/agents/outreach/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Automation-Token", "value": "={{ $env.ORCHESTRATOR_SECRET }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ outreach_id: $json.outreach_id, action: 'reject' }) }}",
+        "options": {"timeout": 15000}
+      }
+    },
+    {
+      "id": "confirm-rejected-1",
+      "name": "Confirm Rejected",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1340, 600],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "❌ Email {{ $('Parse Callback').item.json.outreach_id }} *rejected and skipped*.",
+        "additionalFields": {"parse_mode": "Markdown"}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "reject-invalid-payload-1",
+      "name": "Reject Invalid Payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 380],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\": \"Missing outreach_id or recipient_email\"}",
+        "options": {"responseCode": 400}
+      }
+    }
+  ],
+  "connections": {
+    "Outreach Draft Webhook": {
+      "main": [
+        [{"node": "Validate Payload", "type": "main", "index": 0}]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [{"node": "Format Approval Message", "type": "main", "index": 0}],
+        [{"node": "Reject Invalid Payload", "type": "main", "index": 0}]
+      ]
+    },
+    "Format Approval Message": {
+      "main": [
+        [{"node": "Send Approval Request", "type": "main", "index": 0}]
+      ]
+    },
+    "Telegram Callback Webhook": {
+      "main": [
+        [{"node": "Parse Callback", "type": "main", "index": 0}]
+      ]
+    },
+    "Parse Callback": {
+      "main": [
+        [{"node": "Auth Callback", "type": "main", "index": 0}]
+      ]
+    },
+    "Auth Callback": {
+      "main": [
+        [{"node": "Approve or Reject?", "type": "main", "index": 0}],
+        [{"node": "Reject Invalid Payload", "type": "main", "index": 0}]
+      ]
+    },
+    "Approve or Reject?": {
+      "main": [
+        [{"node": "POST — Send Email", "type": "main", "index": 0}],
+        [{"node": "POST — Reject Email", "type": "main", "index": 0}]
+      ]
+    },
+    "POST — Send Email": {
+      "main": [
+        [{"node": "Confirm Sent", "type": "main", "index": 0}]
+      ]
+    },
+    "POST — Reject Email": {
+      "main": [
+        [{"node": "Confirm Rejected", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": ""
+  },
+  "id": "w-outreach-approval-003",
+  "meta": {
+    "instanceId": "automation-system",
+    "notes": "Two-webhook flow: (1) outreach_agent POSTs a draft to /outreach-approval — n8n sends a Telegram message with Approve/Reject inline buttons. (2) Telegram sends the callback_query to /outreach-callback — n8n routes to /agents/outreach/send with action=send|reject. Requires ORCHESTRATOR_URL, ORCHESTRATOR_SECRET, TELEGRAM_CHAT_ID env vars."
+  }
+}

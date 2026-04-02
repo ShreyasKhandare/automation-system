@@ -1,0 +1,82 @@
+name: Project Autopilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Repo name (e.g. finops-sentinel)"
+        required: true
+      task_type:
+        description: "Task type"
+        required: true
+        type: choice
+        options: ["bugfix", "docs", "small_feature", "refactor", "test", "content_update"]
+      description:
+        description: "Task description"
+        required: true
+      dry_run:
+        description: "Dry run (plan only, no code changes)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  project-autopilot:
+    name: Run project task
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout automation-system
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ShreyasKhandare/${{ github.event.inputs.repo }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: /tmp/target-repo
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            requests \
+            anthropic \
+            pyyaml \
+            python-dotenv \
+            jsonschema
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Project Autopilot
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FLAGS="--repo '${{ github.event.inputs.repo }}' \
+                 --task '${{ github.event.inputs.task_type }}' \
+                 --description '${{ github.event.inputs.description }}'"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            FLAGS="$FLAGS --dry-run --verbose"
+          fi
+          # Override local_path in config — use the checked-out repo
+          export AUTOPILOT_REPO_PATH_OVERRIDE=/tmp/target-repo
+          eval python agents/project_autopilot/runner.py $FLAGS

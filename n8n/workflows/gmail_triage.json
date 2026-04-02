@@ -1,0 +1,224 @@
+{
+  "name": "Gmail → Email Triage Agent",
+  "nodes": [
+    {
+      "id": "gmail-trigger-1",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "gmail-triage-webhook",
+      "parameters": {
+        "pollTimes": {
+          "item": [{"mode": "everyMinute"}]
+        },
+        "filters": {
+          "readStatus": "unread",
+          "labelIds": ["INBOX"]
+        },
+        "options": {
+          "downloadAttachments": false
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-oauth2-creds",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "id": "extract-email-1",
+      "name": "Extract Email Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message_id",
+              "name": "message_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "thread_id",
+              "name": "thread_id",
+              "value": "={{ $json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "subject",
+              "name": "subject",
+              "value": "={{ $json.subject ?? '(no subject)' }}",
+              "type": "string"
+            },
+            {
+              "id": "sender",
+              "name": "sender",
+              "value": "={{ $json.from }}",
+              "type": "string"
+            },
+            {
+              "id": "received_at",
+              "name": "received_at",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "snippet",
+              "name": "snippet",
+              "value": "={{ $json.snippet ?? '' }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "post-to-triage-1",
+      "name": "POST to Email Triage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORCHESTRATOR_URL }}/agents/email_triage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Automation-Token", "value": "={{ $env.ORCHESTRATOR_SECRET }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message_id: $json.message_id, thread_id: $json.thread_id, subject: $json.subject, sender: $json.sender, received_at: $json.received_at, snippet: $json.snippet, trigger: 'n8n_webhook' }) }}",
+        "options": {
+          "timeout": 20000,
+          "response": {"response": {"responseFormat": "json"}}
+        }
+      }
+    },
+    {
+      "id": "check-urgent-1",
+      "name": "Is Urgent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "urgency-check",
+              "leftValue": "={{ $json.label ?? $json.body?.label ?? '' }}",
+              "rightValue": "flag_urgent",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "send-urgent-alert-1",
+      "name": "Send Urgent Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1120, 220],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "🚨 *Urgent Email*\n\n*From:* {{ $('Extract Email Fields').item.json.sender }}\n*Subject:* {{ $('Extract Email Fields').item.json.subject }}\n\n{{ $('Extract Email Fields').item.json.snippet?.slice(0, 200) }}...",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "noop-not-urgent-1",
+      "name": "Not Urgent — Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1120, 400],
+      "parameters": {}
+    },
+    {
+      "id": "check-triage-error-1",
+      "name": "Triage Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 500],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $json.error ?? '' }}",
+              "rightValue": "",
+              "operator": {"type": "string", "operation": "notEquals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "notify-triage-error-1",
+      "name": "Notify Triage Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1120, 560],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "⚠️ Email triage error for msg {{ $('Extract Email Fields').item.json.message_id }}: {{ $json.error }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [{"node": "Extract Email Fields", "type": "main", "index": 0}]
+      ]
+    },
+    "Extract Email Fields": {
+      "main": [
+        [{"node": "POST to Email Triage", "type": "main", "index": 0}]
+      ]
+    },
+    "POST to Email Triage": {
+      "main": [
+        [{"node": "Is Urgent?", "type": "main", "index": 0}]
+      ]
+    },
+    "Is Urgent?": {
+      "main": [
+        [{"node": "Send Urgent Alert", "type": "main", "index": 0}],
+        [{"node": "Not Urgent — Skip", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": ""
+  },
+  "id": "w-gmail-triage-002",
+  "meta": {
+    "instanceId": "automation-system",
+    "notes": "Polls Gmail every minute for new INBOX messages, calls the email_triage agent HTTP endpoint, and sends an immediate Telegram alert for flag_urgent classified emails. Requires Gmail OAuth2 credential and ORCHESTRATOR_URL / TELEGRAM_CHAT_ID env vars."
+  }
+}

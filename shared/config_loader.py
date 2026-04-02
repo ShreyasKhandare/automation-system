@@ -117,6 +117,9 @@ class RecruiterOutreach:
     max_follow_ups: int
     send_window: SendWindow
     warm_up: WarmUp
+    apollo_credits_budget_per_month: int = 45
+    apollo_credits_safety_buffer: int = 5
+    outreach_active_days_per_week: int = 3
 
 
 @dataclass
@@ -341,6 +344,9 @@ def _parse_config(raw: dict[str, Any]) -> Config:
         max_follow_ups=ro["max_follow_ups"],
         send_window=SendWindow(**ro["send_window"]),
         warm_up=WarmUp(**ro["warm_up"]),
+        apollo_credits_budget_per_month=ro.get("apollo_credits_budget_per_month", 45),
+        apollo_credits_safety_buffer=ro.get("apollo_credits_safety_buffer", 5),
+        outreach_active_days_per_week=ro.get("outreach_active_days_per_week", 3),
     )
 
     er = raw["email_routing_rules"]

@@ -269,6 +269,19 @@ def get_today_send_count(conn: sqlite3.Connection) -> int:
     return row[0] if row else 0
 
 
+def get_monthly_apollo_spend(conn: sqlite3.Connection) -> int:
+    """
+    Return the count of Apollo-sourced outreach contacts created this calendar month.
+    Each row where source='apollo' counts as one credit consumed.
+    Used to enforce the apollo_credits_budget_per_month cap in finder.py.
+    """
+    row = conn.execute(
+        "SELECT COUNT(*) FROM outreach "
+        "WHERE source = 'apollo' AND date(created_at) >= date('now', 'start of month')"
+    ).fetchone()
+    return row[0] if row else 0
+
+
 if __name__ == "__main__":
     conn = init_db()
     print("Database initialized successfully.")

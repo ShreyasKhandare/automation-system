@@ -99,7 +99,10 @@
             "week_2_max": {"type": "integer", "minimum": 0},
             "week_3_plus_max": {"type": "integer", "minimum": 0}
           }
-        }
+        },
+        "apollo_credits_budget_per_month": {"type": "integer", "minimum": 0},
+        "apollo_credits_safety_buffer": {"type": "integer", "minimum": 0},
+        "outreach_active_days_per_week": {"type": "integer", "minimum": 0, "maximum": 7}
       }
     },
     "email_routing_rules": {

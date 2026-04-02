@@ -1,0 +1,93 @@
+name: Email Triage
+
+on:
+  schedule:
+    # Poll every 2 hours
+    - cron: "0 */2 * * *"
+    # Daily digest at 11pm UTC = 6pm EST / 7pm EDT
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode"
+        required: false
+        default: "poll"
+        type: choice
+        options: ["poll", "digest"]
+      dry_run:
+        description: "Dry run (no Gmail writes, no Telegram sends)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  email-triage:
+    name: Email triage (${{ github.event.inputs.mode || 'poll' }} mode)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            anthropic \
+            requests \
+            pyyaml \
+            python-dotenv \
+            jsonschema \
+            google-api-python-client \
+            google-auth \
+            google-auth-oauthlib \
+            google-auth-httplib2
+
+      - name: Determine run mode
+        id: mode
+        run: |
+          # If triggered by workflow_dispatch, use the input
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          else
+            # Cron at 23:00 UTC = digest; all others = poll
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" = "23" ]; then
+              echo "mode=digest" >> $GITHUB_OUTPUT
+            else
+              echo "mode=poll" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Run Email Triage agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          HUNTER_API_KEY: ${{ secrets.HUNTER_API_KEY }}
+          GOOGLE_SHEET_ID_JOBS: ${{ secrets.GOOGLE_SHEET_ID_JOBS }}
+          GOOGLE_SHEET_ID_OUTREACH: ${{ secrets.GOOGLE_SHEET_ID_OUTREACH }}
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID_MARKET: ${{ secrets.NOTION_DATABASE_ID_MARKET }}
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+        run: |
+          FLAGS="--mode ${{ steps.mode.outputs.mode }}"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            FLAGS="$FLAGS --dry-run --verbose"
+          fi
+          python agents/email_triage/notifier.py $FLAGS

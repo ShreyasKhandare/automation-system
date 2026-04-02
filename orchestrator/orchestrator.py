@@ -262,6 +262,37 @@ def cmd_outreach_status(text: str) -> str:
         return f"⚠️ {e}"
 
 
+@_register(r'^/outreach\s+credits$', "Check Apollo credits used this month")
+def cmd_outreach_credits(text: str) -> str:
+    from shared.db import get_conn, get_db_path, get_monthly_apollo_spend
+    from shared.config_loader import load_config
+    from datetime import datetime, timezone
+    try:
+        cfg = load_config()
+        budget = cfg.recruiter_outreach.apollo_credits_budget_per_month
+        buffer = cfg.recruiter_outreach.apollo_credits_safety_buffer
+
+        with get_conn(get_db_path()) as conn:
+            used = get_monthly_apollo_spend(conn)
+
+        remaining = max(0, budget - used)
+        now = datetime.now(timezone.utc)
+        if now.month == 12:
+            next_reset = datetime(now.year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            next_reset = datetime(now.year, now.month + 1, 1, tzinfo=timezone.utc)
+        reset_str = next_reset.strftime("%B 1, %Y")
+
+        status = "🟢" if used < (budget - buffer) else "🔴 exhausted —"
+        return (
+            f"💳 *Apollo Credits (this month)*\n"
+            f"{status} {used}/{budget} used | {remaining} remaining\n"
+            f"Resets {reset_str}"
+        )
+    except Exception as e:
+        return f"⚠️ Could not fetch Apollo credit data: {e}"
+
+
 @_register(r'^/emails$', "Current inbox triage summary")
 def cmd_emails(text: str) -> str:
     fn = _try_import_agent("agents.email_triage.digest", "get_summary")

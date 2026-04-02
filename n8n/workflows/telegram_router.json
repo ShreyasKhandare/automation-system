@@ -1,0 +1,181 @@
+{
+  "name": "Telegram Router → Orchestrator",
+  "nodes": [
+    {
+      "id": "telegram-trigger-1",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "telegram-router-webhook",
+      "parameters": {
+        "updates": ["message", "callback_query"]
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "extract-message-1",
+      "name": "Extract Message Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "chat_id",
+              "name": "chat_id",
+              "value": "={{ $json.message?.chat?.id ?? $json.callback_query?.message?.chat?.id }}",
+              "type": "string"
+            },
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $json.message?.text ?? $json.callback_query?.data ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "from_id",
+              "name": "from_id",
+              "value": "={{ $json.message?.from?.id ?? $json.callback_query?.from?.id }}",
+              "type": "string"
+            },
+            {
+              "id": "update_type",
+              "name": "update_type",
+              "value": "={{ $json.callback_query ? 'callback_query' : 'message' }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "auth-check-1",
+      "name": "Auth Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": false, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {
+              "id": "auth-condition",
+              "leftValue": "={{ $json.from_id }}",
+              "rightValue": "={{ $env.TELEGRAM_CHAT_ID }}",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "post-to-orchestrator-1",
+      "name": "POST to Orchestrator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 240],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ORCHESTRATOR_URL }}/dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Automation-Token", "value": "={{ $env.ORCHESTRATOR_SECRET }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text, chat_id: $json.chat_id, update_type: $json.update_type }) }}",
+        "options": {"timeout": 30000}
+      }
+    },
+    {
+      "id": "send-response-1",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1120, 240],
+      "parameters": {
+        "chatId": "={{ $('Extract Message Text').item.json.chat_id }}",
+        "text": "={{ $json.response ?? $json.body?.response ?? '⚙️ Command received.' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "id": "send-unauthorized-1",
+      "name": "Ignore Unauthorized",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 420],
+      "parameters": {}
+    },
+    {
+      "id": "error-handler-1",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1120, 420],
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "⚠️ Orchestrator error: {{ $json.message ?? 'Unknown error' }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [{"node": "Extract Message Text", "type": "main", "index": 0}]
+      ]
+    },
+    "Extract Message Text": {
+      "main": [
+        [{"node": "Auth Check", "type": "main", "index": 0}]
+      ]
+    },
+    "Auth Check": {
+      "main": [
+        [{"node": "POST to Orchestrator", "type": "main", "index": 0}],
+        [{"node": "Ignore Unauthorized", "type": "main", "index": 0}]
+      ]
+    },
+    "POST to Orchestrator": {
+      "main": [
+        [{"node": "Send Response", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": ""
+  },
+  "id": "w-telegram-router-001",
+  "meta": {
+    "instanceId": "automation-system",
+    "notes": "Routes all Telegram messages to the Python orchestrator. Requires ORCHESTRATOR_URL, ORCHESTRATOR_SECRET, and TELEGRAM_CHAT_ID env vars set in n8n. Whitelist enforced by from_id == TELEGRAM_CHAT_ID check."
+  }
+}

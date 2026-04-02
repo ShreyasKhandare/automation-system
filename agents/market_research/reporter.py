@@ -1,0 +1,209 @@
+"""
+agents/market_research/reporter.py — Telegram digest + GitHub markdown commit.
+
+Formats the AnalysisReport into:
+  1. A Telegram Sunday digest (concise bullets)
+  2. A markdown file committed to docs/reports/market_YYYY_WW.md
+"""
+
+from __future__ import annotations
+
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(_REPO_ROOT))
+
+from shared.logger import get_logger
+from agents.market_research.analyzer import AnalysisReport
+
+log = get_logger("market_research")
+
+_DOCS_DIR = _REPO_ROOT / "docs" / "reports"
+
+
+def _send_telegram(text: str) -> None:
+    try:
+        import requests
+        from shared.secrets import get_secret
+
+        token = get_secret("TELEGRAM_BOT_TOKEN")
+        chat_id = get_secret("TELEGRAM_CHAT_ID")
+        for chunk in [text[i:i+4000] for i in range(0, len(text), 4000)]:
+            requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"},
+                timeout=10,
+            )
+    except Exception as e:
+        log.warning("telegram_send_failed", error=str(e))
+
+
+def format_telegram_digest(report: AnalysisReport, week_label: str, notion_url: str | None = None) -> str:
+    """Format the report as a concise Telegram message."""
+    lines = [f"🧠 *Market Research — {week_label}*\n"]
+
+    # Summary
+    if report.summary:
+        lines.append(f"_{report.summary[:300]}_\n")
+
+    # Top items
+    if report.top_items:
+        lines.append("*🔥 Top This Week:*")
+        for item in report.top_items[:5]:
+            lines.append(f"• [{item.get('source','?')}] {item.get('title','')[:80]}")
+        lines.append("")
+
+    # Build next
+    if report.build_next:
+        lines.append("*🚀 Build Next:*")
+        for idea in report.build_next[:3]:
+            lines.append(f"• {idea.get('idea','')[:80]} (~{idea.get('effort_days','?')} days)")
+        lines.append("")
+
+    # Skill gaps
+    if report.skill_gaps:
+        lines.append(f"*📈 Trending Gaps:* {', '.join(report.skill_gaps[:5])}\n")
+
+    # Apply here
+    if report.apply_here:
+        lines.append("*📋 Apply:*")
+        for job in report.apply_here[:3]:
+            lines.append(f"• {job.get('company','?')} — {job.get('role','?')[:60]}")
+        lines.append("")
+
+    if notion_url:
+        lines.append(f"📄 [Full report in Notion]({notion_url})")
+
+    return "\n".join(lines)
+
+
+def format_markdown_report(report: AnalysisReport, week_label: str, notion_url: str | None = None) -> str:
+    """Format the report as a markdown document for GitHub commit."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    lines = [
+        f"# Market Research — {week_label}",
+        f"",
+        f"> Generated: {now}",
+        f"",
+        f"## Executive Summary",
+        f"",
+        report.summary or "_No summary available._",
+        f"",
+        f"---",
+        f"",
+        f"## 🔥 Top Items This Week",
+        f"",
+    ]
+
+    for item in report.top_items:
+        url = item.get("url", "")
+        title = item.get("title", "")
+        source = item.get("source", "?")
+        why = item.get("why", "")
+        score = item.get("relevance_score", 0)
+        link = f"[{title}]({url})" if url else title
+        lines.append(f"- **[{source}]** {link} — {why} *(relevance: {score:.0%})*")
+
+    lines += [
+        f"",
+        f"---",
+        f"",
+        f"## 🚀 What to Build Next",
+        f"",
+    ]
+    for idea in report.build_next:
+        skills = ", ".join(idea.get("skills_demonstrated", []))
+        lines.append(
+            f"- **{idea.get('idea','')}** — ~{idea.get('effort_days','?')} days | "
+            f"Skills: {skills} | {idea.get('why','')}"
+        )
+
+    lines += [
+        f"",
+        f"---",
+        f"",
+        f"## 📋 Where to Apply",
+        f"",
+    ]
+    for job in report.apply_here:
+        url = job.get("url", "")
+        co = job.get("company", "?")
+        role = job.get("role", "?")
+        why = job.get("why", "")
+        link = f"[{co}]({url})" if url else co
+        lines.append(f"- **{link}** — {role} | {why}")
+
+    if report.skill_gaps:
+        lines += [
+            f"",
+            f"---",
+            f"",
+            f"## 📈 Trending Skill Gaps",
+            f"",
+            f"{', '.join(f'`{s}`' for s in report.skill_gaps)}",
+        ]
+
+    if report.trending_tech:
+        lines += [
+            f"",
+            f"---",
+            f"",
+            f"## 🛠️ Trending Tech",
+            f"",
+            f"{', '.join(f'`{t}`' for t in report.trending_tech)}",
+        ]
+
+    if notion_url:
+        lines += [
+            f"",
+            f"---",
+            f"",
+            f"*[Full Notion page]({notion_url})*",
+        ]
+
+    lines += [
+        f"",
+        f"---",
+        f"",
+        f"*Auto-generated by automation-system market_research agent.*",
+    ]
+
+    return "\n".join(lines)
+
+
+def write_markdown_report(
+    report: AnalysisReport,
+    week_label: str,
+    notion_url: str | None = None,
+    dry_run: bool = False,
+) -> Path | None:
+    """Write the markdown report to docs/reports/market_YYYY_WW.md."""
+    clean_label = week_label.replace("/", "_").replace(" ", "_")
+    out_path = _DOCS_DIR / f"market_{clean_label}.md"
+
+    if dry_run:
+        log.info("markdown_report_dry_run", path=str(out_path))
+        return out_path
+
+    _DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    content = format_markdown_report(report, week_label, notion_url)
+    out_path.write_text(content, encoding="utf-8")
+    log.info("markdown_report_written", path=str(out_path))
+    return out_path
+
+
+def send_telegram_digest(
+    report: AnalysisReport,
+    week_label: str,
+    notion_url: str | None = None,
+    dry_run: bool = False,
+) -> None:
+    """Send the Sunday Telegram digest."""
+    text = format_telegram_digest(report, week_label, notion_url)
+    if dry_run:
+        log.info("telegram_digest_dry_run", chars=len(text))
+        return
+    _send_telegram(text)
+    log.info("telegram_digest_sent", week=week_label)
