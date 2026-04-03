@@ -155,6 +155,7 @@ def run(dry_run: bool = False, verbose: bool = False, digest_now: bool = False) 
     db_path = get_db_path()
     init_db(db_path)
     with get_conn(db_path) as conn:
+        init_db(get_db_path())
         log_health(conn, "email_triage", "green", summary, {
             "total": len(classified),
             "flagged": len(flagged),
