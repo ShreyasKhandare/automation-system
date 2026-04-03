@@ -17,6 +17,8 @@ jobs:
   ai-briefing:
     name: Run AI Radar and send Telegram briefing
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     timeout-minutes: 15
 
     steps:

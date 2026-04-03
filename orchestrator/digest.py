@@ -37,7 +37,7 @@ log = get_logger("digest")
 
 def _section_health() -> str:
     try:
-        from orchestrator.health import run_health_check
+        from .health import run_health_check
         report = run_health_check()
         return report.to_short_message()
     except Exception as e:
@@ -186,7 +186,7 @@ def generate_digest() -> str:
 def send_digest() -> None:
     """Generate digest and send to Telegram. Used by GitHub Actions."""
     from shared.secrets import get_secret
-    from orchestrator.telegram_bot import send_message
+    from .telegram_bot import send_message
 
     token = get_secret("TELEGRAM_BOT_TOKEN")
     chat_id = get_secret("TELEGRAM_CHAT_ID")

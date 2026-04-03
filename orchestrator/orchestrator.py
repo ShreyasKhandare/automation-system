@@ -110,14 +110,14 @@ def cmd_help(text: str) -> str:
 
 @_register(r'^/health$', "Quick green/yellow/red status per agent")
 def cmd_health(text: str) -> str:
-    from orchestrator.health import run_health_check
+    from .health import run_health_check
     report = run_health_check()
     return report.to_short_message()
 
 
 @_register(r'^/status$|^STATUS$', "Full system health status")
 def cmd_status(text: str) -> str:
-    from orchestrator.health import run_health_check
+    from .health import run_health_check
     report = run_health_check()
     return report.to_telegram_message()
 
@@ -272,7 +272,7 @@ def cmd_emails(text: str) -> str:
 
 @_register(r'^GENERATE\s+DAILY[_\s]DIGEST(\s+NOW)?', "Generate and send today's full digest")
 def cmd_daily_digest(text: str) -> str:
-    from orchestrator.digest import generate_digest
+    from .digest import generate_digest
     return generate_digest()
 
 
@@ -467,7 +467,7 @@ def get_costs() -> str:
 
 
 def generate_digest() -> str:
-    from orchestrator.digest import generate_digest as _gen
+    from .digest import generate_digest as _gen
     return _gen()
 
 
@@ -490,7 +490,7 @@ if __name__ == "__main__":
         print(get_status())
         sys.exit(0)
 
-    from orchestrator.telegram_bot import create_bot
+    from .telegram_bot import create_bot
     bot = create_bot(dispatch_fn=dispatch)
 
     if args.once:

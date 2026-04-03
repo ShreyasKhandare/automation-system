@@ -19,6 +19,9 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Callable
 
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env", override=False)
+
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
@@ -107,11 +110,11 @@ _REQUIRED_SECRETS_PER_AGENT: dict[str, list[str]] = {
     "ai_radar":          ["ANTHROPIC_API_KEY", "TELEGRAM_BOT_TOKEN"],
     "job_discovery":     ["ANTHROPIC_API_KEY", "SERPAPI_API_KEY", "TELEGRAM_BOT_TOKEN"],
     "email_triage":      ["ANTHROPIC_API_KEY", "GMAIL_CLIENT_ID", "GMAIL_REFRESH_TOKEN", "TELEGRAM_BOT_TOKEN"],
-    "github_docs":       ["GITHUB_TOKEN", "ANTHROPIC_API_KEY"],
+    "github_docs":       ["GH_PAT", "ANTHROPIC_API_KEY"],
     "market_research":   ["ANTHROPIC_API_KEY", "TELEGRAM_BOT_TOKEN"],
     "outreach":          ["APOLLO_API_KEY", "HUNTER_API_KEY", "GMAIL_CLIENT_ID", "TELEGRAM_BOT_TOKEN"],
     "resume":            ["ANTHROPIC_API_KEY"],
-    "project_autopilot": ["ANTHROPIC_API_KEY", "GITHUB_TOKEN"],
+    "project_autopilot": ["ANTHROPIC_API_KEY", "GH_PAT"],
 }
 
 

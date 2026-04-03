@@ -46,7 +46,7 @@ REQUIRED_SECRETS: list[str] = [
     "GOOGLE_SHEET_ID_OUTREACH",
     "NOTION_API_KEY",
     "NOTION_DATABASE_ID_MARKET",
-    "GITHUB_TOKEN",
+    "GH_PAT",
     "APIFY_API_TOKEN",               # optional — only needed when linkedin_apify enabled
 ]
 
@@ -55,6 +55,7 @@ OPTIONAL_SECRETS: set[str] = {
     "APIFY_API_TOKEN",
     "NOTION_API_KEY",
     "NOTION_DATABASE_ID_MARKET",
+    "GMAIL_REFRESH_TOKEN",  # generated later via shared.gmail_auth (Session 5)
 }
 
 
@@ -111,7 +112,7 @@ class _Secrets:
     NOTION_DATABASE_ID_MARKET: str = ""
 
     # GitHub
-    GITHUB_TOKEN: str = ""
+    GH_PAT: str = ""
 
     def get(self, key: str) -> str:
         """Get a secret by name. Raises MissingSecretError if not set."""
