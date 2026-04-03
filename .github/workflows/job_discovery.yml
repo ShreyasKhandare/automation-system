@@ -23,8 +23,6 @@ jobs:
   job-discovery:
     name: Run job sweep and send Telegram digest
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     timeout-minutes: 20
 
     steps:
@@ -66,7 +64,7 @@ jobs:
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID_MARKET: ${{ secrets.NOTION_DATABASE_ID_MARKET }}
           APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
@@ -81,13 +79,12 @@ jobs:
           python agents/job_discovery/notifier.py $FLAGS
 
       - name: Write Google Sheets credentials file
-        if: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON != '' }}
         run: |
-          # If GOOGLE_SHEETS_CREDENTIALS_JSON contains JSON content (not a path),
-          # write it to a temp file and update the env var
-          if echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-            echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" > /tmp/sheets-creds.json
-            echo "GOOGLE_SHEETS_CREDENTIALS_JSON=/tmp/sheets-creds.json" >> $GITHUB_ENV
+          if [ -n "$GOOGLE_SHEETS_CREDENTIALS_JSON" ]; then
+            if echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+              echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" > /tmp/sheets-creds.json
+              echo "GOOGLE_SHEETS_CREDENTIALS_JSON=/tmp/sheets-creds.json" >> $GITHUB_ENV
+            fi
           fi
         env:
           GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
