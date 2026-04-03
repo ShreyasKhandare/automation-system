@@ -35,7 +35,7 @@ _REPO_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 from shared.logger import get_logger
-from shared.db import get_conn, get_db_path, log_health
+from shared.db import get_conn, get_db_path, init_db, log_health
 from shared.config_loader import load_config
 
 log = get_logger("resume")
@@ -59,7 +59,9 @@ def _send_telegram(message: str) -> None:
 def _load_job(job_id: str) -> dict[str, Any] | None:
     """Load job record from SQLite."""
     try:
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return dict(row) if row else None
     except Exception as e:
@@ -81,7 +83,9 @@ def _load_base_resume(cfg) -> str:
 def _save_resume_record(job: dict, resume_id: str, file_paths: dict, keyword_report: dict, diff_summary: str) -> None:
     """Save resume version to SQLite resumes table."""
     try:
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             conn.execute(
                 """INSERT OR REPLACE INTO resumes
                 (id, job_id, version, output_md_path, output_pdf_path, output_docx_path,
@@ -221,7 +225,9 @@ def run(job_id: str, dry_run: bool = False) -> str:
 
     # --- Log health ---
     duration = (datetime.now(timezone.utc) - start_time).total_seconds()
-    with get_conn(get_db_path()) as conn:
+    db_path = get_db_path()
+    init_db(db_path)
+    with get_conn(db_path) as conn:
         log_health(conn, "resume", "green", f"Tailored {job_id}", {
             "job_id": job_id,
             "duration_seconds": duration,

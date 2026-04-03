@@ -26,7 +26,7 @@ _REPO_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 from shared.logger import get_logger
-from shared.db import get_conn, get_db_path, log_health
+from shared.db import get_conn, get_db_path, init_db, log_health
 
 log = get_logger("email_triage")
 
@@ -87,7 +87,9 @@ def run(dry_run: bool = False, verbose: bool = False, digest_now: bool = False) 
     except Exception as e:
         msg = f"Polling failed: {e}"
         log.error("triage_poll_failed", error=str(e))
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             log_health(conn, "email_triage", "red", msg)
         return f"❌ Email triage failed (poll): {e}"
 
@@ -96,7 +98,9 @@ def run(dry_run: bool = False, verbose: bool = False, digest_now: bool = False) 
 
     if not messages:
         log.info("no_new_messages")
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             log_health(conn, "email_triage", "green", "no new messages")
         return "📧 Email triage: no new messages."
 
@@ -148,7 +152,9 @@ def run(dry_run: bool = False, verbose: bool = False, digest_now: bool = False) 
         f"{duration:.1f}s"
     )
 
-    with get_conn(get_db_path()) as conn:
+    db_path = get_db_path()
+    init_db(db_path)
+    with get_conn(db_path) as conn:
         log_health(conn, "email_triage", "green", summary, {
             "total": len(classified),
             "flagged": len(flagged),

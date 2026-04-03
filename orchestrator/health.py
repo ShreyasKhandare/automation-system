@@ -238,10 +238,7 @@ def run_health_check(db_path=None) -> HealthReport:
     from shared.db import get_conn, get_db_path, init_db
 
     path = db_path or get_db_path()
-
-    # Init DB if it doesn't exist yet
-    if not Path(str(path)).exists():
-        init_db(path)
+    init_db(path)
 
     agents: list[AgentHealth] = []
     with get_conn(path) as conn:

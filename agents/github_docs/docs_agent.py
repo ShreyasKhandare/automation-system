@@ -24,7 +24,7 @@ _REPO_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 from shared.logger import get_logger
-from shared.db import get_conn, get_db_path, log_health
+from shared.db import get_conn, get_db_path, init_db, log_health
 from shared.config_loader import load_config
 
 log = get_logger("github_docs")
@@ -110,7 +110,9 @@ def _gather_stats() -> dict[str, Any]:
     """Gather weekly stats from SQLite."""
     stats: dict[str, Any] = {}
     try:
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             row = conn.execute(
                 "SELECT COUNT(*) as cnt FROM jobs WHERE date(created_at) >= date('now', '-7 days')"
             ).fetchone()
@@ -294,7 +296,9 @@ def run(dry_run: bool = False) -> str:
     # --- Log health ---
     duration = (datetime.now(timezone.utc) - start_time).total_seconds()
     summary = f"GitHub Docs complete in {duration:.1f}s"
-    with get_conn(get_db_path()) as conn:
+    db_path = get_db_path()
+    init_db(db_path)
+    with get_conn(db_path) as conn:
         log_health(conn, "github_docs", "green", summary, {"duration_seconds": duration})
 
     log.info("github_docs_complete", duration=duration)

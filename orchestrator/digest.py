@@ -152,8 +152,7 @@ def generate_digest() -> str:
     Build and return the full daily digest message as a Telegram-formatted string.
     """
     db_path = get_db_path()
-    if not Path(str(db_path)).exists():
-        init_db(db_path)
+    init_db(db_path)
 
     today = date.today().isoformat()
     now = datetime.now(timezone.utc).strftime("%H:%M UTC")

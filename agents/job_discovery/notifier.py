@@ -147,9 +147,7 @@ def _format_urgent_alert(job: JobListing) -> str:
 
 def _persist_jobs(listings: list[JobListing]) -> None:
     db_path = get_db_path()
-    if not Path(str(db_path)).exists():
-        init_db(db_path)
-
+    init_db(db_path)
     with get_conn(db_path) as conn:
         for job in listings:
             upsert_job(conn, job.to_db_dict())
@@ -165,7 +163,9 @@ def _persist_jobs(listings: list[JobListing]) -> None:
 def get_today_digest() -> str:
     """Return a cached today-digest from DB. Used by /jobs today command."""
     try:
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             rows = conn.execute(
                 """
                 SELECT id, title, company, location, remote, score, score_reason, url, salary_min, salary_max
@@ -244,9 +244,9 @@ def run(stealth: bool = False, dry_run: bool = False) -> str:
         log.run_error(run_id, error=str(e))
         try:
             db_path = get_db_path()
-            if Path(str(db_path)).exists():
-                with get_conn(db_path) as conn:
-                    log_health(conn, "job_discovery", "red", str(e)[:200])
+            init_db(db_path)
+            with get_conn(db_path) as conn:
+                log_health(conn, "job_discovery", "red", str(e)[:200])
         except Exception:
             pass
         return f"🔴 Job Discovery failed: {e}"

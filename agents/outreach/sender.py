@@ -21,7 +21,7 @@ _REPO_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 from shared.logger import get_logger
-from shared.db import get_conn, get_db_path, get_today_send_count, upsert_outreach
+from shared.db import get_conn, get_db_path, get_today_send_count, init_db, upsert_outreach
 from shared.config_loader import load_config
 
 log = get_logger("outreach")
@@ -37,7 +37,9 @@ def _get_warm_up_limit() -> int:
 
     # Calculate which week we're in (from first outreach record)
     try:
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             row = conn.execute(
                 "SELECT MIN(created_at) as first_sent FROM outreach WHERE status = 'sent'"
             ).fetchone()
@@ -125,9 +127,12 @@ def send_email(outreach_id: str, dry_run: bool = False) -> dict[str, Any]:
         f"This check can never be bypassed."
     )
 
+    db_path = get_db_path()
+    init_db(db_path)
+
     # Load outreach record
     try:
-        with get_conn(get_db_path()) as conn:
+        with get_conn(db_path) as conn:
             row = conn.execute(
                 "SELECT * FROM outreach WHERE id = ?", (outreach_id,)
             ).fetchone()
@@ -153,7 +158,7 @@ def send_email(outreach_id: str, dry_run: bool = False) -> dict[str, Any]:
         }
 
     # Check warm-up limit
-    with get_conn(get_db_path()) as conn:
+    with get_conn(db_path) as conn:
         today_count = get_today_send_count(conn)
     daily_limit = min(_get_warm_up_limit(), cfg.recruiter_outreach.max_contacts_per_day)
 
@@ -190,7 +195,7 @@ def send_email(outreach_id: str, dry_run: bool = False) -> dict[str, Any]:
 
         # Update record
         sent_at = datetime.now(timezone.utc).isoformat()
-        with get_conn(get_db_path()) as conn:
+        with get_conn(db_path) as conn:
             conn.execute(
                 "UPDATE outreach SET status = 'sent', sent_at = ? WHERE id = ?",
                 (sent_at, outreach_id),

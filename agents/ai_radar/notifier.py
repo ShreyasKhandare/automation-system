@@ -65,9 +65,7 @@ def _send_telegram(message: str) -> None:
 
 def _persist_items(items: list[ScoredItem], digest_date: str) -> None:
     db_path = get_db_path()
-    if not Path(str(db_path)).exists():
-        init_db(db_path)
-
+    init_db(db_path)
     with get_conn(db_path) as conn:
         for item in items:
             record = item.to_db_dict()
@@ -110,7 +108,9 @@ def get_latest_briefing() -> str:
     Falls back to triggering a fresh run if nothing in DB today.
     """
     try:
-        with get_conn(get_db_path()) as conn:
+        db_path = get_db_path()
+        init_db(db_path)
+        with get_conn(db_path) as conn:
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             rows = conn.execute(
                 """
@@ -183,9 +183,9 @@ def run(dry_run: bool = False, verbose: bool = False) -> str:
         # Log failure to DB
         try:
             db_path = get_db_path()
-            if Path(str(db_path)).exists():
-                with get_conn(db_path) as conn:
-                    log_health(conn, "ai_radar", "red", str(e)[:200])
+            init_db(db_path)
+            with get_conn(db_path) as conn:
+                log_health(conn, "ai_radar", "red", str(e)[:200])
         except Exception:
             pass
 

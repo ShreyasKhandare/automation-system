@@ -18,7 +18,7 @@ _REPO_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 from shared.logger import get_logger
-from shared.db import get_conn, get_db_path, log_health
+from shared.db import get_conn, get_db_path, init_db, log_health
 from shared.config_loader import load_config
 
 log = get_logger("market_research")
@@ -164,7 +164,9 @@ def generate_report(analysis: dict[str, Any], dry_run: bool = False) -> str:
 
     # Log health
     duration = (datetime.now(timezone.utc) - start_time).total_seconds()
-    with get_conn(get_db_path()) as conn:
+    db_path = get_db_path()
+    init_db(db_path)
+    with get_conn(db_path) as conn:
         log_health(conn, "market_research", "green", "weekly report generated", {
             "duration_seconds": duration,
         })
