@@ -11,3 +11,8 @@ google-auth-httplib2
 google-auth-oauthlib
 python-telegram-bot
 jinja2
+python-docx
+praw
+gspread
+notion-client
+pytz

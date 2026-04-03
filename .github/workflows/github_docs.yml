@@ -1,0 +1,69 @@
+name: GitHub Docs Update
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # 4am UTC = 11pm EST (nightly)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no commits)'
+        required: false
+        default: 'false'
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure git
+        run: |
+          git config user.name "Shreyas Automation Bot"
+          git config user.email "automation@shreyaskhandare.dev"
+
+      - name: Run GitHub docs agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+          GOOGLE_SHEET_ID_JOBS: ${{ secrets.GOOGLE_SHEET_ID_JOBS }}
+          GOOGLE_SHEET_ID_OUTREACH: ${{ secrets.GOOGLE_SHEET_ID_OUTREACH }}
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          HUNTER_API_KEY: ${{ secrets.HUNTER_API_KEY }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+        run: |
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from agents.github_docs.docs_agent import run
+          dry = '$DRY_RUN' == 'true'
+          result = run(dry_run=dry)
+          print(result)
+          "
+
+      - name: Push changes
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          git push origin main || echo "Nothing to push"

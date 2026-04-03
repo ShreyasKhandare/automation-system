@@ -1,0 +1,297 @@
+{
+  "name": "Job Discovery to Outreach Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "job-to-outreach",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook from Job Discovery",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "job-to-outreach-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "score-check",
+              "leftValue": "={{ $json.body.claude_score || $json.body.score }}",
+              "rightValue": 7,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "high-score-check",
+      "name": "Score >= 7?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/outreach/find",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "company",
+              "value": "={{ $json.body.company }}"
+            },
+            {
+              "name": "job_id",
+              "value": "={{ $json.body.job_id || $json.body.id }}"
+            },
+            {
+              "name": "trigger",
+              "value": "job_discovery"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "apollo-lookup",
+      "name": "Apollo Lookup via finder.py",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/outreach/verify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contacts",
+              "value": "={{ $json.contacts }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "hunter-verify",
+      "name": "Hunter Email Verify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/outreach/add-to-queue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "verified_contacts",
+              "value": "={{ $json.verified }}"
+            },
+            {
+              "name": "job_id",
+              "value": "={{ $('Webhook from Job Discovery').item.json.body.job_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "add-to-outreach-queue",
+      "name": "Add to Outreach Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '🎯 *New High-Score Job Found*\\n\\n*Company:* ' + $('Webhook from Job Discovery').item.json.body.company + '\\n*Role:* ' + ($('Webhook from Job Discovery').item.json.body.title || 'AI Engineer') + '\\n*Score:* ' + ($('Webhook from Job Discovery').item.json.body.claude_score || '?') + '/10\\n\\n*Recruiters found:* ' + ($('Add to Outreach Queue').item.json.count || 0) + '\\n\\nUse /outreach status to review drafts.' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "inline_keyboard": [
+              [
+                {
+                  "text": "✅ Approve All",
+                  "callback_data": "={{ 'APPROVE_ALL:' + $('Webhook from Job Discovery').item.json.body.job_id }}"
+                },
+                {
+                  "text": "👁 Review First",
+                  "callback_data": "={{ 'REVIEW:' + $('Webhook from Job Discovery').item.json.body.job_id }}"
+                }
+              ]
+            ]
+          }
+        }
+      },
+      "id": "telegram-approval-message",
+      "name": "Send Telegram Approval Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1440, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-credential",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"status\": \"ok\", \"message\": \"High-score job skipped (score below threshold)\"} }}"
+      },
+      "id": "skip-low-score",
+      "name": "Skip Low Score",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [720, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"status\": \"ok\", \"message\": \"Outreach pipeline triggered\", \"job_id\": $('Webhook from Job Discovery').item.json.body.job_id} }}"
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1680, 200]
+    }
+  ],
+  "connections": {
+    "Webhook from Job Discovery": {
+      "main": [
+        [
+          {
+            "node": "Score >= 7?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score >= 7?": {
+      "main": [
+        [
+          {
+            "node": "Apollo Lookup via finder.py",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Low Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apollo Lookup via finder.py": {
+      "main": [
+        [
+          {
+            "node": "Hunter Email Verify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hunter Email Verify": {
+      "main": [
+        [
+          {
+            "node": "Add to Outreach Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Outreach Queue": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Approval Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Approval Message": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "shreyas-automation"
+  },
+  "id": "job-to-outreach",
+  "tags": ["automation", "outreach", "jobs", "apollo", "hunter"]
+}

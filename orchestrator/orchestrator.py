@@ -262,6 +262,14 @@ def cmd_outreach_status(text: str) -> str:
         return f"⚠️ {e}"
 
 
+@_register(r'^/outreach\s+credits$', "Apollo API credit usage this month")
+def cmd_outreach_credits(text: str) -> str:
+    fn = _try_import_agent("agents.outreach.finder", "get_credits_status")
+    if fn:
+        return fn()
+    return _agent_not_ready("outreach")
+
+
 @_register(r'^/emails$', "Current inbox triage summary")
 def cmd_emails(text: str) -> str:
     fn = _try_import_agent("agents.email_triage.digest", "get_summary")

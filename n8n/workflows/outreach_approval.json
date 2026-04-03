@@ -1,0 +1,243 @@
+{
+  "name": "Outreach Approval Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["callback_query"],
+        "additionalFields": {}
+      },
+      "id": "telegram-callback-trigger",
+      "name": "Telegram Approval Button",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-credential",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst callbackData = data.callback_query?.data || '';\nconst messageId = data.callback_query?.message?.message_id;\nconst chatId = data.callback_query?.message?.chat?.id;\nconst callbackQueryId = data.callback_query?.id;\n\n// Parse action and outreach_id from callback data\n// Format: APPROVE:out_20260330_jane_doe or REJECT:out_20260330_jane_doe\nconst [action, outreachId] = callbackData.split(':');\n\nreturn [{\n  json: {\n    action: action,\n    outreach_id: outreachId,\n    message_id: messageId,\n    chat_id: chatId,\n    callback_query_id: callbackQueryId,\n    is_approve: action === 'APPROVE',\n    is_reject: action === 'REJECT'\n  }\n}];"
+      },
+      "id": "parse-callback",
+      "name": "Parse Approval Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-approve",
+              "leftValue": "={{ $json.is_approve }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "approve-or-reject",
+      "name": "Approve or Reject?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/outreach/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "outreach_id",
+              "value": "={{ $json.outreach_id }}"
+            },
+            {
+              "name": "approved_by",
+              "value": "telegram"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-approved-email",
+      "name": "POST to sender.py (Approve)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/outreach/reject",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "outreach_id",
+              "value": "={{ $json.outreach_id }}"
+            },
+            {
+              "name": "rejected_by",
+              "value": "telegram"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "log-rejection",
+      "name": "POST to tracker.py (Reject)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Approval Action').item.json.chat_id }}",
+        "text": "✅ Email approved and queued for sending: {{ $('Parse Approval Action').item.json.outreach_id }}",
+        "additionalFields": {}
+      },
+      "id": "confirm-approve",
+      "name": "Confirm Approved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1200, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-credential",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Approval Action').item.json.chat_id }}",
+        "text": "❌ Outreach rejected and logged: {{ $('Parse Approval Action').item.json.outreach_id }}",
+        "additionalFields": {}
+      },
+      "id": "confirm-reject",
+      "name": "Confirm Rejected",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1200, 420],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-credential",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Approval Button": {
+      "main": [
+        [
+          {
+            "node": "Parse Approval Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Approval Action": {
+      "main": [
+        [
+          {
+            "node": "Approve or Reject?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve or Reject?": {
+      "main": [
+        [
+          {
+            "node": "POST to sender.py (Approve)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "POST to tracker.py (Reject)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to sender.py (Approve)": {
+      "main": [
+        [
+          {
+            "node": "Confirm Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to tracker.py (Reject)": {
+      "main": [
+        [
+          {
+            "node": "Confirm Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "shreyas-automation"
+  },
+  "id": "outreach-approval",
+  "tags": ["automation", "outreach", "approval"]
+}

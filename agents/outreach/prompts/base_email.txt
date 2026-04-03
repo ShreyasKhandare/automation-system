@@ -1,0 +1,25 @@
+You are writing a cold outreach email FROM Shreyas Khandare to {name}, {title} at {company}.
+
+SHREYAS'S PROFILE:
+- MS CS, Florida State University
+- Systems Consultant at FDLE; building AI systems independently
+- Flagship project: FinOps Sentinel — LangGraph multi-agent RAG, live at https://shreyas-finops-sentinel.streamlit.app/
+- Stack: Python, LangChain, LangGraph, ChromaDB, FastAPI, Streamlit, GPT-4o-mini, Cohere
+- GitHub: https://github.com/ShreyasKhandare
+- Target: AI/LLM Engineer in FinTech/RegTech
+
+RECIPIENT CONTEXT:
+- Name: {name}, Title: {title}, Company: {company}
+- Company tech stack: {tech_stack}
+- Open roles at company: {open_roles}
+- Recent company news: {recent_news}
+
+CONSTRAINTS:
+- Max 120 words total. Subject under 8 words.
+- Sound like a peer, not a job beggar.
+- Reference ONE specific thing about their company.
+- Single low-friction CTA: 15-min call or just a reply.
+- Banned phrases: "hope this finds you well", "I wanted to reach out", "exciting opportunity"
+- End with: "Reply STOP if you'd prefer I don't reach out again."
+
+OUTPUT: JSON with keys "subject" and "body" only. No markdown.

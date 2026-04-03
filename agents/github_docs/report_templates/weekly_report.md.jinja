@@ -1,0 +1,52 @@
+# Weekly Automation Report — Week {{ week }}, {{ year }}
+
+Generated: {{ now.strftime('%Y-%m-%d %H:%M UTC') }}
+Owner: {{ cfg.profile.name }}
+
+---
+
+## 📊 Job Search Summary
+
+| Metric | This Week |
+|--------|-----------|
+| Jobs discovered | {{ stats.jobs_week }} |
+| Top score | {{ stats.top_score }} |
+| Pending review | {{ stats.jobs_pending }} |
+
+---
+
+## 📬 Recruiter Outreach
+
+| Metric | This Week |
+|--------|-----------|
+| Emails sent | {{ stats.outreach_week }} |
+| Replies received | {{ stats.replies_week }} |
+| Pending approval | {{ stats.outreach_pending }} |
+
+---
+
+## 📄 Resume Activity
+
+- Tailored variants generated: **{{ stats.resumes_week }}**
+
+---
+
+## 🤖 AI Radar
+
+- Items processed: **{{ stats.radar_week }}**
+- TRY_NOW items: **{{ stats.radar_try_asap }}**
+
+---
+
+## 🎯 Target Roles
+
+{% for title in cfg.profile.target_titles -%}
+- {{ title }}
+{% endfor %}
+
+**Industries:** {{ cfg.profile.target_industries | join(', ') }}
+
+---
+
+*Generated automatically by {{ cfg.profile.name }}'s automation system*
+*Commit convention: {{ cfg.documentation_and_github.commit_style }}*
